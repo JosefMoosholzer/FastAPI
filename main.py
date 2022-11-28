@@ -1,6 +1,6 @@
 from collections import defaultdict
 from typing import Optional
-from fastapi import FastAPI
+from fastapi import FastAPI, Response, status, HTTPException
 from fastapi.params import Body
 from pydantic import BaseModel
 
@@ -26,7 +26,7 @@ async def today():
 
 
 # Create
-@app.post('/posts')
+@app.post('/posts', status_code=status.HTTP_201_CREATED)
 def create_post(post: Post):
     post_dict = post.dict()
     post_dict['id'] = len(my_posts) + 1
@@ -39,17 +39,32 @@ def get_posts():
     return {'data': list(my_posts.values())}
 
 @app.get('/posts/{id}')
-def get_post(id: int):
-    print('GET-request for ' + str(id))
-    return {'posts': my_posts.get(id)}
+def get_post(id: int, response: Response):
+    post = my_posts.get(id)
+    if not post:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f'Post with id {id} not found')
+
+    return {'posts': post}
 
 ## Update
-@app.put('posts/{id}')
-def update_post():
-    return {'data': 'This is your posts'}
+@app.put('/posts/{id}')
+def update_post(id: int, post: Post):
+    if not my_posts.get(id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f'Post with id {id} not found')
+    else:
+        post_dict = post.dict()
+        post_dict['id'] = id
+        my_posts[id] = post_dict
+        return {'data': post_dict}
 
 ## Delete
-@app.delete('/posts')
-def delete_post():
-    return {'data': 'This is your posts'}
-
+@app.delete('/posts/{id}')
+def delete_post(id: int):
+    if not my_posts.get(id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f'Post with id {id} not found')
+    else:
+        my_posts.pop(id)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
