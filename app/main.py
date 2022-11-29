@@ -1,16 +1,22 @@
-from collections import defaultdict
-from typing import Optional
-from fastapi import FastAPI, Response, status, HTTPException
+from . import models
+from .database import engine, get_db
+from sqlalchemy.orm import Session
+
+from fastapi import FastAPI, Response, status, HTTPException, Depends
 from fastapi.params import Body
+
 from pydantic import BaseModel
+
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
 from datetime import datetime
 from time import sleep
 
+models.Base.metadata.create_all(bind=engine)
 app = FastAPI()
 # Run this in the terminal to start the server: uvicorn app.main:app --reload
+
 
 class Post(BaseModel):
     title: str
@@ -39,6 +45,9 @@ while True:
 async def today():
     return {'Date': datetime.now().date()}
 
+@app.get("/sqlalchemy")
+def test_post(db: Session = Depends(get_db)):
+    return {"status": "success"}
 
 # Create
 @app.post('/posts', status_code=status.HTTP_201_CREATED)
